@@ -1,4 +1,4 @@
-FROM python:3.11-slim AS builder
+FROM python:3.12-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
@@ -15,7 +15,7 @@ RUN pip install --upgrade pip setuptools wheel
 RUN pip install --no-cache-dir \
     langchain==0.1.20 \
     langchain-core==0.1.52 \
-    langgraph==0.0.40 \
+    langgraph==0.1.19 \
     pydantic==2.7.1 \
     openai \
     anthropic \
@@ -28,7 +28,7 @@ RUN pip install --no-cache-dir \
 
 RUN pip install --no-cache-dir .
 
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
@@ -45,4 +45,4 @@ WORKDIR /home/appuser/app
 
 COPY --from=builder --chown=appuser:appuser /build .
 
-CMD ["python", "run_bot.py"]
+ENTRYPOINT ["python", "run_bot.py"]
