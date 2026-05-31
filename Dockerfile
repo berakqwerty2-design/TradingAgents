@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -15,12 +15,15 @@ COPY . .
 
 RUN pip install --upgrade pip
 
+RUN pip uninstall -y langgraph langchain langchain-core
+
 RUN pip install \
-    langgraph==0.2.56 \
-    langchain-core==0.3.21 \
-    langchain-community \
-    langchain-openai \
-    openai \
+    langgraph==0.0.40 \
+    langchain==0.1.16 \
+    langchain-core==0.1.42 \
+    langchain-community==0.0.32 \
+    langchain-openai==0.1.3 \
+    openai==1.23.6 \
     pandas \
     numpy \
     yfinance \
