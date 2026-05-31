@@ -1,9 +1,3 @@
-# =========================================================
-# PATCH FOR OPENAI-COMPATIBLE PROVIDERS
-# Xiaomi Mimo / OpenRouter / Custom Gateway
-# FORCE CHAT COMPLETIONS (DISABLE /responses)
-# =========================================================
-
 import os
 from typing import Any, Optional
 
@@ -15,7 +9,6 @@ from .base_client import BaseLLMClient, normalize_content
 from .capabilities import get_capabilities
 from .validators import validate_model
 
-
 # =========================================================
 # NORMALIZED CLIENT
 # =========================================================
@@ -24,33 +17,38 @@ class NormalizedChatOpenAI(ChatOpenAI):
 
     def __init__(self, **kwargs):
 
-        # =========================================
-        # FORCE OLD OPENAI CHAT COMPLETIONS API
-        # DISABLE /v1/responses
-        # =========================================
+        # IMPORTANT FIX
         kwargs["use_responses_api"] = False
 
         super().__init__(**kwargs)
 
     def invoke(self, input, config=None, **kwargs):
+
         return normalize_content(
             super().invoke(input, config, **kwargs)
         )
 
-    def with_structured_output(self, schema, *, method=None, **kwargs):
+    def with_structured_output(
+        self,
+        schema,
+        *,
+        method=None,
+        **kwargs
+    ):
 
         caps = get_capabilities(self.model_name)
 
         if caps.preferred_structured_method == "none":
             raise NotImplementedError(
-                f"{self.model_name} has no structured-output method available; "
-                f"agent factories will fall back to free-text generation."
+                f"{self.model_name} has no structured output."
             )
 
         method = method or caps.preferred_structured_method
 
-        # Disable problematic tool_choice
-        if method == "function_calling" and not caps.supports_tool_choice:
+        if (
+            method == "function_calling"
+            and not caps.supports_tool_choice
+        ):
             kwargs.setdefault("tool_choice", None)
 
         return super().with_structured_output(
@@ -59,9 +57,8 @@ class NormalizedChatOpenAI(ChatOpenAI):
             **kwargs
         )
 
-
 # =========================================================
-# INPUT NORMALIZER
+# HELPERS
 # =========================================================
 
 def _input_to_messages(input_: Any) -> list:
@@ -74,14 +71,19 @@ def _input_to_messages(input_: Any) -> list:
 
     return []
 
-
 # =========================================================
 # DEEPSEEK PATCH
 # =========================================================
 
 class DeepSeekChatOpenAI(NormalizedChatOpenAI):
 
-    def _get_request_payload(self, input_, *, stop=None, **kwargs):
+    def _get_request_payload(
+        self,
+        input_,
+        *,
+        stop=None,
+        **kwargs
+    ):
 
         payload = super()._get_request_payload(
             input_,
@@ -108,80 +110,8 @@ class DeepSeekChatOpenAI(NormalizedChatOpenAI):
 
         return payload
 
-    def _create_chat_result(self, response, generation_info=None):
-
-        chat_result = super()._create_chat_result(
-            response,
-            generation_info
-        )
-
-        response_dict = (
-            response
-            if isinstance(response, dict)
-            else response.model_dump(
-                exclude={
-                    "choices": {
-                        "__all__": {
-                            "message": {
-                                "parsed"
-                            }
-                        }
-                    }
-                }
-            )
-        )
-
-        for generation, choice in zip(
-            chat_result.generations,
-            response_dict.get("choices", [])
-        ):
-
-            reasoning = choice.get(
-                "message",
-                {}
-            ).get("reasoning_content")
-
-            if reasoning is not None:
-                generation.message.additional_kwargs[
-                    "reasoning_content"
-                ] = reasoning
-
-        return chat_result
-
-
 # =========================================================
-# MINIMAX PATCH
-# =========================================================
-
-class MinimaxChatOpenAI(NormalizedChatOpenAI):
-
-    def _get_request_payload(self, input_, *, stop=None, **kwargs):
-
-        payload = super()._get_request_payload(
-            input_,
-            stop=stop,
-            **kwargs
-        )
-
-        if get_capabilities(
-            self.model_name
-        ).requires_reasoning_split:
-
-            extra_body = payload.setdefault(
-                "extra_body",
-                {}
-            )
-
-            extra_body.setdefault(
-                "reasoning_split",
-                True
-            )
-
-        return payload
-
-
-# =========================================================
-# PASSTHROUGH
+# CONFIG
 # =========================================================
 
 _PASSTHROUGH_KWARGS = (
@@ -196,30 +126,9 @@ _PASSTHROUGH_KWARGS = (
 )
 
 _PROVIDER_BASE_URL = {
-    "xai":        "https://api.x.ai/v1",
-    "deepseek":   "https://api.deepseek.com",
-    "qwen":       "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-    "qwen-cn":    "https://dashscope.aliyuncs.com/compatible-mode/v1",
-    "glm":        "https://api.z.ai/api/paas/v4/",
-    "glm-cn":     "https://open.bigmodel.cn/api/paas/v4/",
-    "minimax":    "https://api.minimax.io/v1",
-    "minimax-cn": "https://api.minimaxi.com/v1",
     "openrouter": "https://openrouter.ai/api/v1",
-    "ollama":     "http://localhost:11434/v1",
+    "ollama": "http://localhost:11434/v1",
 }
-
-
-def _resolve_provider_base_url(provider: str):
-
-    if provider == "ollama":
-
-        env_url = os.environ.get("OLLAMA_BASE_URL")
-
-        if env_url:
-            return env_url
-
-    return _PROVIDER_BASE_URL.get(provider)
-
 
 # =========================================================
 # MAIN CLIENT
@@ -250,80 +159,25 @@ class OpenAIClient(BaseLLMClient):
         llm_kwargs = {
             "model": self.model,
 
-            # =====================================
             # FORCE CHAT COMPLETIONS
-            # =====================================
             "use_responses_api": False,
         }
 
-        # =====================================
-        # BASE URL
-        # =====================================
-
-        if self.provider in _PROVIDER_BASE_URL:
-
-            llm_kwargs["base_url"] = (
-                self.base_url
-                or _resolve_provider_base_url(
-                    self.provider
-                )
-            )
-
-            api_key_env = get_api_key_env(
-                self.provider
-            )
-
-            if api_key_env:
-
-                api_key = os.environ.get(
-                    api_key_env
-                )
-
-                if api_key:
-
-                    llm_kwargs["api_key"] = api_key
-
-                else:
-                    raise ValueError(
-                        f"Missing API key env: {api_key_env}"
-                    )
-
-            else:
-                llm_kwargs["api_key"] = "ollama"
-
-        elif self.base_url:
+        if self.base_url:
 
             llm_kwargs["base_url"] = self.base_url
 
-        # =====================================
-        # FORWARD EXTRA KWARGS
-        # =====================================
+        api_key = os.environ.get("OPENAI_API_KEY")
+
+        if api_key:
+            llm_kwargs["api_key"] = api_key
 
         for key in _PASSTHROUGH_KWARGS:
 
             if key in self.kwargs:
                 llm_kwargs[key] = self.kwargs[key]
 
-        # =====================================
-        # PROVIDER CLASS
-        # =====================================
-
-        if self.provider == "deepseek":
-
-            chat_cls = DeepSeekChatOpenAI
-
-        elif self.provider in (
-            "minimax",
-            "minimax-cn"
-        ):
-
-            chat_cls = MinimaxChatOpenAI
-
-        else:
-
-            chat_cls = NormalizedChatOpenAI
-
-        return chat_cls(**llm_kwargs)
+        return NormalizedChatOpenAI(**llm_kwargs)
 
     def validate_model(self):
 
