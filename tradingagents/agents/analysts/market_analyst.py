@@ -1,71 +1,43 @@
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.tools import tool
+from langgraph.prebuilt import create_react_agent
 
-try:
-    from langchain.agents import AgentExecutor, create_tool_calling_agent
-except ImportError:
-    from langchain_core.agents import AgentExecutor
-    from langchain.agents import create_tool_calling_agent
-
-from tradingagents.default_config import DEFAULT_CONFIG
 from tradingagents.tools import get_stock_data, get_indicators
 
 
 def get_verified_market_snapshot(
     symbol: str,
-    curr_date: str,
+    curr_date: str = "",
     look_back_days: int = 30,
 ):
-    """
-    Compatibility wrapper supaya agent gak error.
-    """
-    return get_stock_data.invoke(
-        {
-            "symbol": symbol,
-        }
-    )
+    """Compatibility wrapper."""
+    return get_stock_data.invoke({"symbol": symbol})
 
 
 def create_market_analyst(llm):
     tools = [
         get_stock_data,
         get_indicators,
-        get_verified_market_snapshot,
     ]
 
-    system_prompt = """
-You are a professional crypto and stock market analyst.
+    system_prompt = """You are a professional crypto and stock market analyst.
 You can use these tools:
 - get_stock_data
 - get_indicators
-- get_verified_market_snapshot
 
 Always analyze:
 - trend
 - momentum
 - volatility
-- support resistance
+- support/resistance
 - volume
 
-Return concise but detailed analysis.
-"""
+Return concise but detailed analysis."""
 
-    prompt = ChatPromptTemplate.from_messages(
-        [
-            ("system", system_prompt),
-            ("human", "{input}"),
-            ("placeholder", "{agent_scratchpad}"),
-        ]
-    )
-
-    agent = create_tool_calling_agent(
-        llm,
-        tools,
-        prompt,
-    )
-
-    return AgentExecutor(
-        agent=agent,
+    agent = create_react_agent(
+        model=llm,
         tools=tools,
-        verbose=True,
-        handle_parsing_errors=True,
+        prompt=system_prompt,
     )
+
+    return agent
