@@ -1,9 +1,8 @@
-# Langchain - pin ke versi 0.3.x yang masih ada AgentExecutor
-# tapi juga udah ada RemoveMessage
 langchain==0.3.25
 langchain-core==0.3.63
 langchain-community==0.3.24
 langgraph==0.2.69
+langgraph-checkpoint-sqlite
 
 openai>=1.30.1
 
