@@ -1,48 +1,42 @@
-FROM python:3.12-slim AS builder
+FROM python:3.12-slim
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 
-RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
+WORKDIR /app
 
-WORKDIR /build
+RUN apt-get update && apt-get install -y \
+    git \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY . .
 
-RUN pip install --upgrade pip setuptools wheel
+RUN pip install --upgrade pip
 
-RUN pip install --no-cache-dir \
-    langchain==0.1.20 \
-    langchain-core==0.1.52 \
-    langgraph==0.1.19 \
-    pydantic==2.7.1 \
+RUN pip install \
+    langgraph==0.2.56 \
+    langchain-core==0.3.21 \
+    langchain-community \
+    langchain-openai \
     openai \
-    anthropic \
-    yfinance \
     pandas \
     numpy \
+    yfinance \
     ta \
-    fastapi \
-    uvicorn
+    feedparser \
+    beautifulsoup4 \
+    lxml \
+    requests
 
-RUN pip install --no-cache-dir .
+RUN pip install .
 
-FROM python:3.12-slim
-
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
-
-COPY --from=builder /opt/venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-
-RUN useradd --create-home appuser \
- && install -d -m 0755 -o appuser -g appuser /home/appuser/.tradingagents
-
+RUN useradd -m appuser
 USER appuser
 
 WORKDIR /home/appuser/app
 
-COPY --from=builder --chown=appuser:appuser /build .
+COPY --chown=appuser:appuser . .
 
-ENTRYPOINT ["python", "run_bot.py"]
+CMD ["python", "run_bot.py"]
