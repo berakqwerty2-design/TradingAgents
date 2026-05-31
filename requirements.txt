@@ -6,4 +6,5 @@ tiktoken
 pandas
 numpy
 yfinance
+pandas
 ta
