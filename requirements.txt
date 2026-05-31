@@ -1,12 +1,21 @@
 langchain==0.1.20
+langchain-core==0.1.52
 langchain-community==0.0.38
-langgraph==0.0.32
-openai==1.30.1
 
+langgraph==0.0.40
+
+openai==1.30.1
+pydantic==2.7.1
+python-dotenv==1.0.1
+tqdm
 pandas
 numpy
 yfinance
+duckduckgo-search
+feedparser
+finnhub-python
+stockstats
 ta
-python-dotenv
-tqdm
 requests
+beautifulsoup4
+lxml
