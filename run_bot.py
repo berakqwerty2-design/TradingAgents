@@ -1,72 +1,41 @@
 import os
 import traceback
-
 from tradingagents.graph.trading_graph import TradingAgentsGraph
 from tradingagents.default_config import DEFAULT_CONFIG
 
-# =========================================================
-# XIAOMI MIMO CONFIG
-# =========================================================
+# Baca dari environment Railway, jangan hardcode
+BASE_URL = os.environ.get("OPENAI_BASE_URL") or os.environ.get("OPENAI_API_BASE", "https://token-plan-sgp.xiaomimimo.com/v1")
+API_KEY = os.environ.get("OPENAI_API_KEY", "")
 
-BASE_URL = "https://token-plan-sgp.xiaomimimo.com/v1"
-API_KEY = "ISI_API_KEY_LO"
-
+# Pastikan keduanya ter-set
 os.environ["OPENAI_API_KEY"] = API_KEY
 os.environ["OPENAI_BASE_URL"] = BASE_URL
 os.environ["OPENAI_API_BASE"] = BASE_URL
 
 print("[*] Setup Sistem LLM...")
 print(f"[*] Base URL API : {BASE_URL}")
-
-# =========================================================
-# CONFIG
-# =========================================================
+print(f"[*] API Key     : {API_KEY[:8]}...")
 
 config = DEFAULT_CONFIG.copy()
-
-config["model"] = "mimo-v2.5-pro"
-
+config["llm_provider"] = "openai"
+config["deep_think_llm"] = "mimo-v2.5-pro"
+config["quick_think_llm"] = "mimo-v2.5-pro"
 config["temperature"] = 0
 config["max_tokens"] = 4000
 
-if "llm" in config:
-
-    config["llm"]["model"] = "mimo-v2.5-pro"
-
-    config["llm"]["base_url"] = BASE_URL
-
-    config["llm"]["api_key"] = API_KEY
-
-    config["llm"]["temperature"] = 0
-
-    config["llm"]["max_tokens"] = 4000
+for bad_key in ["use_responses_api", "model", "llm"]:
+    config.pop(bad_key, None)
 
 print("[*] Init TradingAgents...")
 
-# =========================================================
-# RUN BOT
-# =========================================================
-
 try:
-
-    ta = TradingAgentsGraph(
-        debug=True,
-        config=config
-    )
-
+    ta = TradingAgentsGraph(debug=True, config=config)
     print("[*] Running analysis BTC-USD...")
     print("[*] Trade Date : 2026-05-31")
-
-    _, decision = ta.propagate(
-        "BTC-USD",
-        "2026-05-31"
-    )
-
+    _, decision = ta.propagate("BTC-USD", "2026-05-31")
     print("\n================ RESULT ================")
     print(decision)
     print("========================================")
-
 except Exception as e:
-
     print("\n[!] FULL ERROR:")
     traceback.print_exc()
