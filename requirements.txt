@@ -20,3 +20,5 @@ yfinance
 python-dotenv
 aiohttp
 requests
+flask
+flask-cors
