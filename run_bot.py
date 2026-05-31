@@ -3,48 +3,56 @@ from tradingagents.graph.trading_graph import TradingAgentsGraph
 from tradingagents.default_config import DEFAULT_CONFIG
 
 # ==========================================
-# 1. PAKSA ENVIRONMENT VARIABLES DI SINI
+# FORCE ENV
 # ==========================================
-# Kunci di /v1 TANPA ada tanda / di paling ujung karakter
-custom_base_url = "https://token-plan-sgp.xiaomimimo.com/v1"
-os.environ["OPENAI_BASE_URL"] = custom_base_url
+BASE_URL = "https://token-plan-sgp.xiaomimimo.com/v1"
+API_KEY = "ISI_API_KEY_LO"
 
-# Masukin API Key Mimo lo yang asli di sini
-api_key = "API_KEY_MIMO_LO_DISINI" 
-os.environ["OPENAI_API_KEY"] = api_key
+# WAJIB SET SEMUA VARIAN ENV
+os.environ["OPENAI_API_KEY"] = API_KEY
+os.environ["OPENAI_BASE_URL"] = BASE_URL
+os.environ["OPENAI_API_BASE"] = BASE_URL
 
-print(f"[*] Setup Sistem LLM...")
-print(f"[*] Base URL API : {os.environ['OPENAI_BASE_URL']}")
+print("[*] Setup Sistem LLM...")
+print(f"[*] Base URL API : {BASE_URL}")
 
 # ==========================================
-# 2. OVERRIDE KONFIGURASI MODEL
+# CONFIG
 # ==========================================
 config = DEFAULT_CONFIG.copy()
 
-# Pakai model ID yang udah lo koreksi sebelumnya
-model_name = "mimo-v2.5-pro"
-config["model"] = model_name
+MODEL_NAME = "mimo-v2.5-pro"
 
-if "llm" in config:
-    config["llm"]["model"] = model_name
-    config["llm"]["base_url"] = custom_base_url
+config["deep_think_llm"] = MODEL_NAME
+config["quick_think_llm"] = MODEL_NAME
 
-print(f"[*] Model Target : {model_name}")
-print("[*] Menginisialisasi Trading Agents Graph...")
+# override llm config
+config["llm"] = {
+    "model": MODEL_NAME,
+    "base_url": BASE_URL,
+    "api_key": API_KEY,
+    "temperature": 0.1
+}
 
-# ==========================================
-# 3. EKSEKUSI TRADING BOT
-# ==========================================
+print(f"[*] Model Target : {MODEL_NAME}")
+print("[*] Init TradingAgents...")
+
 try:
-    ta = TradingAgentsGraph(debug=True, config=config)
-    print("[*] Bot berjalan! Memulai analisis untuk BTC-USD...")
-    
-    _, decision = ta.propagate("BTC-USD", "2026-05-31") 
+    ta = TradingAgentsGraph(
+        debug=True,
+        config=config
+    )
 
-    print("\n================ HASIL KEPUTUSAN TRADING ================")
+    print("[*] Running analysis BTC-USD...")
+
+    _, decision = ta.propagate(
+        "BTC-USD",
+        "2026-05-31"
+    )
+
     print(decision)
-    print("=========================================================")
 
 except Exception as e:
-    print("\n[!] TERJADI ERROR CRASH SAAT EKSEKUSI:")
-    print(str(e))
+    import traceback
+    print("\n[!] FULL ERROR:")
+    traceback.print_exc()
