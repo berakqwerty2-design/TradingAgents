@@ -1,4 +1,5 @@
 import os
+import traceback
 
 from tradingagents.graph.trading_graph import TradingAgentsGraph
 from tradingagents.default_config import DEFAULT_CONFIG
@@ -38,10 +39,12 @@ if "llm" in config:
 
     config["llm"]["temperature"] = 0
 
+    config["llm"]["max_tokens"] = 4000
+
 print("[*] Init TradingAgents...")
 
 # =========================================================
-# RUN
+# RUN BOT
 # =========================================================
 
 try:
@@ -66,5 +69,4 @@ try:
 except Exception as e:
 
     print("\n[!] FULL ERROR:")
-    import traceback
     traceback.print_exc()
