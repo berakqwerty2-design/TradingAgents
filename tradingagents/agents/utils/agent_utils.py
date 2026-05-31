@@ -3,7 +3,13 @@ import logging
 from typing import Any, Mapping, Optional
 
 import yfinance as yf
-from langchain_core.messages import HumanMessage, RemoveMessage
+from langchain_core.messages import HumanMessage
+
+# RemoveMessage moved to langgraph in older langchain-core versions
+try:
+    from langchain_core.messages import RemoveMessage
+except ImportError:
+    from langgraph.graph.message import RemoveMessage
 
 # Import tools from separate utility files
 from tradingagents.agents.utils.core_stock_tools import (
@@ -100,13 +106,7 @@ def build_instrument_context(
     asset_type: str = "stock",
     identity: Optional[Mapping[str, str]] = None,
 ) -> str:
-    """Describe the exact instrument so agents preserve identity and ticker.
-
-    When ``identity`` is provided (resolved deterministically via
-    :func:`resolve_instrument_identity`), the company name and business
-    classification are injected so agents anchor to the real company rather
-    than pattern-matching the price chart to a wrong one (#814).
-    """
+    """Describe the exact instrument so agents preserve identity and ticker."""
     is_crypto = asset_type == "crypto"
     instrument_label = "asset" if is_crypto else "instrument"
     context = (
@@ -146,14 +146,7 @@ def build_instrument_context(
 
 
 def get_instrument_context_from_state(state: Mapping[str, Any]) -> str:
-    """Return the instrument context for the current run.
-
-    Prefers the identity-resolved context computed once at run start and
-    stored on the state (see ``TradingAgentsGraph.resolve_instrument_context``).
-    Falls back to a ticker-only context — with no network lookup — when the
-    state was constructed without it (bare programmatic states, tests), so a
-    consumer is never forced to make a yfinance call mid-graph.
-    """
+    """Return the instrument context for the current run."""
     context = state.get("instrument_context")
     if isinstance(context, str) and context.strip():
         return context
@@ -165,15 +158,7 @@ def get_instrument_context_from_state(state: Mapping[str, Any]) -> str:
 
 def create_msg_delete():
     def delete_messages(state):
-        """Clear messages and add a context-anchored placeholder.
-
-        The placeholder must not be a bare ``"Continue"``: some
-        OpenAI-compatible providers interpret that literally as the user task
-        and produce output about the word "continue" instead of analysing the
-        instrument (#888). Anchoring it to the resolved instrument context and
-        date keeps the next analyst on-task even if the provider treats the
-        placeholder as a standalone request.
-        """
+        """Clear messages and add a context-anchored placeholder."""
         messages = state["messages"]
         removal_operations = [RemoveMessage(id=m.id) for m in messages]
 
@@ -188,6 +173,3 @@ def create_msg_delete():
         return {"messages": removal_operations + [placeholder]}
 
     return delete_messages
-
-
-        
