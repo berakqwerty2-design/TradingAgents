@@ -5,28 +5,27 @@ from tradingagents.default_config import DEFAULT_CONFIG
 # ==========================================
 # 1. PAKSA ENVIRONMENT VARIABLES DI SINI
 # ==========================================
-# Kita coba HAPUS akhiran /v1 untuk menghindari error 404 dari Openresty
-custom_base_url = os.getenv("OPENAI_BASE_URL", "https://token-plan-sgp.xiaomimimo.com")
+# Coba pakai /v1 tanpa garis miring di ujungnya dulu
+custom_base_url = "https://token-plan-sgp.xiaomimimo.com/v1"
 os.environ["OPENAI_BASE_URL"] = custom_base_url
 
-# Pastikan API Key terbaca (kalau di Railway kosong, dia pakai 'dummy-key')
-api_key = os.getenv("OPENAI_API_KEY", "dummy-key")
+# Ganti pakai API Key Mimo lo yang asli
+api_key = "API_KEY_MIMO_LO_DISINI" 
 os.environ["OPENAI_API_KEY"] = api_key
 
 print(f"[*] Setup Sistem LLM...")
 print(f"[*] Base URL API : {os.environ['OPENAI_BASE_URL']}")
-print(f"[*] Status Key   : {'Terisi' if api_key != 'dummy-key' else 'KOSONG/DUMMY'}")
 
 # ==========================================
-# 2. OVERRIDE KONFIGURASI MODEL
+# 2. OVERRIDE DENGAN MODEL ID YANG BENER
 # ==========================================
 config = DEFAULT_CONFIG.copy()
 
-# Memasukkan nama model Xiaomi Mimo lo
-model_name = "xiaomi mimo v.2.5-pro"
+# Pake ID yang barusan lo koreksi
+model_name = "mimo-v2.5-pro"
 config["model"] = model_name
 
-# (Opsional) Berjaga-jaga kalau TradingAgents pakai nested dictionary untuk LLM
+# Buat jaga-jaga kalau library-nya baca nested config
 if "llm" in config:
     config["llm"]["model"] = model_name
     config["llm"]["base_url"] = custom_base_url
@@ -39,10 +38,9 @@ print("[*] Menginisialisasi Trading Agents Graph...")
 # ==========================================
 try:
     ta = TradingAgentsGraph(debug=True, config=config)
-    
     print("[*] Bot berjalan! Memulai analisis untuk BTC-USD...")
     
-    # Jalankan agent untuk BTC-USD
+    # Jalankan agent
     _, decision = ta.propagate("BTC-USD", "2026-05-31") 
 
     print("\n================ HASIL KEPUTUSAN TRADING ================")
@@ -52,4 +50,3 @@ try:
 except Exception as e:
     print("\n[!] TERJADI ERROR CRASH SAAT EKSEKUSI:")
     print(str(e))
-    print("[!] Cek kembali penulisan nama model atau format URL-nya.")
