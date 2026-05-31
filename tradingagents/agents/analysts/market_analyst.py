@@ -1,81 +1,67 @@
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
+from langchain.agents import AgentExecutor, create_tool_calling_agent
 
-from tradingagents.tools.stock_tools import (
-    get_stock_data,
-    get_indicators,
-)
+from tradingagents.default_config import DEFAULT_CONFIG
+from tradingagents.tools import get_stock_data, get_indicators
 
-# =========================================================
-# TOOL PATCH
-# =========================================================
 
 def get_verified_market_snapshot(
     symbol: str,
     curr_date: str,
-    look_back_days: int = 30
+    look_back_days: int = 30,
 ):
     """
-    Compatibility wrapper
+    Compatibility wrapper supaya agent gak error.
     """
-
-    return get_stock_data(
-        symbol=symbol,
-        start_date="2026-01-01",
-        end_date=curr_date
+    return get_stock_data.invoke(
+        {
+            "symbol": symbol,
+        }
     )
 
-# =========================================================
-# REGISTER TOOLS
-# =========================================================
 
-tools = [
-    get_stock_data,
-    get_indicators,
-    get_verified_market_snapshot,
-]
+def create_market_analyst(llm):
+    tools = [
+        get_stock_data,
+        get_indicators,
+        get_verified_market_snapshot,
+    ]
 
-# =========================================================
-# MARKET ANALYST NODE
-# =========================================================
-
-def market_analyst_node(state, llm):
-
-    prompt = ChatPromptTemplate.from_messages([
-        (
-            "system",
-            """
+    system_prompt = """
 You are a professional crypto and stock market analyst.
 
-You have access ONLY to these tools:
+You can use these tools:
+- get_stock_data
+- get_indicators
+- get_verified_market_snapshot
 
-1. get_stock_data
-2. get_indicators
-3. get_verified_market_snapshot
-
-DO NOT call tools outside this list.
-
-Always analyze carefully and provide:
+Always analyze:
 - trend
 - momentum
-- support/resistance
-- risk
-- recommendation
-"""
-        ),
-        ("human", "{messages}")
-    ])
+- volatility
+- support resistance
+- volume
 
-    chain = (
-        prompt
-        | llm.bind_tools(tools)
-        | StrOutputParser()
+Return concise but detailed analysis.
+"""
+
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", system_prompt),
+            ("human", "{input}"),
+            ("placeholder", "{agent_scratchpad}"),
+        ]
     )
 
-    result = chain.invoke({
-        "messages": state["messages"]
-    })
+    agent = create_tool_calling_agent(
+        llm,
+        tools,
+        prompt,
+    )
 
-    return {
-        "messages": [result]
-    }
+    return AgentExecutor(
+        agent=agent,
+        tools=tools,
+        verbose=True,
+        handle_parsing_errors=True,
+    )
