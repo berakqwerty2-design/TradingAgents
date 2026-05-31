@@ -1,5 +1,10 @@
 from langchain_core.prompts import ChatPromptTemplate
-from langchain.agents import AgentExecutor, create_tool_calling_agent
+
+try:
+    from langchain.agents import AgentExecutor, create_tool_calling_agent
+except ImportError:
+    from langchain_core.agents import AgentExecutor
+    from langchain.agents import create_tool_calling_agent
 
 from tradingagents.default_config import DEFAULT_CONFIG
 from tradingagents.tools import get_stock_data, get_indicators
@@ -29,7 +34,6 @@ def create_market_analyst(llm):
 
     system_prompt = """
 You are a professional crypto and stock market analyst.
-
 You can use these tools:
 - get_stock_data
 - get_indicators
