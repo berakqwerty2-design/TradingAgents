@@ -1,6 +1,7 @@
 langchain==0.3.25
 langchain-core==0.3.63
 langchain-community==0.3.24
+langchain-openai==0.2.14
 langgraph==0.2.69
 langgraph-checkpoint-sqlite
 
